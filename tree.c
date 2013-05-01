@@ -3,6 +3,7 @@
 #include <assert.h>
 #include "tree.h"
 #include "y.tab.h"
+#include "vector.h"
 
 
 tree_t *make_tree( int type, tree_t *left, tree_t *right )
@@ -28,7 +29,7 @@ void print_tree( tree_t *t, int spaces )
 
 	switch (t->type) {
 
-	case ADDOP:
+	case SIGN:
 		fprintf( stderr, "[OP:%c]", '+');
 		break;
 
@@ -64,7 +65,7 @@ int eval_tree(tree_t *t)
 	}
 
 	switch (t->type) {
-	case ADDOP:
+	case SIGN:
 		return eval_tree(t->left) + eval_tree(t->right);
 		break;
 

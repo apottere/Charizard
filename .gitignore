@@ -16,3 +16,7 @@
 *.out
 *.app
 Charizard
+
+# Testing
+test*
+out_*

@@ -1,6 +1,7 @@
 %code requires
 {
 #include "tree.h"
+#include "vector.h"
 }
 
 %{
@@ -27,8 +28,8 @@ main()
 
 %token IDENT NUM INTEGER
 %token OBRACK EBRACK OSBRACK ESBRACK
-%token ADDOP MULOP SIGN RELOP
-%token NOT ASSIGNOP
+%token MULOP SIGN RELOP
+%token NOT OR ASSIGNOP
 %token WHILE DO IF THEN ELSE BEGIN_T END
 %token COLON SEMICOLON COMMA DOT
 %token PROGRAM FUNCTION RESERVED ARRAY OF VAR PROCEDURE
@@ -107,11 +108,12 @@ statement:
 		 IF expr THEN statement ELSE statement
 		 |
 		 WHILE expr DO statement
+		 ;
 
 variable:
 		IDENT
 		|
-		IDENT OSBRACK expr ESBRACK
+		IDENT OSBRACK simple_expr ESBRACK
 		;
 
 procedure_statement:
@@ -142,10 +144,13 @@ expr:
 
 simple_expr:
 	term
+/*	|
+	SIGN term
+	*/
 	|
-	sign term
+	simple_expr SIGN term
 	|
-	simple_expr ADDOP term
+	simple_expr OR term
 	{/*
 		if($2 == NULL) {
 			$$ = $1;
@@ -169,6 +174,8 @@ term:
 factor:
 	  IDENT
 	  |
+	  IDENT OSBRACK simple_expr ESBRACK
+	  |
 	  IDENT OBRACK expr_list EBRACK
 	  {
 //	  	$$  = $2;
@@ -188,8 +195,5 @@ factor:
 	  |
 	  NOT factor
 	  ;
-
-sign:
-	SIGN
 
 %%

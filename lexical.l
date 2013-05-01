@@ -1,11 +1,8 @@
 %{
 #include "y.tab.h"
 #include "tree.h"
+#include "vector.h"
 %}
-
-digit			[0-9]
-sign			[+|-]
-addop			{sign}|or
 
 
 %%
@@ -32,9 +29,9 @@ procedure				return PROCEDURE;
 \[						return OSBRACK;
 \]						return ESBRACK;
 
-{addop}					return ADDOP;
+or						return OR;
 [*|/]|div|mod|and		return MULOP;
-{sign}					return SIGN;
+[+|-]					return SIGN;
 
 ,						return COMMA;
 \.						return DOT;
@@ -45,6 +42,6 @@ procedure				return PROCEDURE;
 \n                      
 [ \t]+
 
-{digit}+					yylval=make_tree(NUM, NULL, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
-[a-zA-Z][a-zA-Z{digit}]*    yylval=make_tree(IDENT, NULL, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
+[0-9]+					yylval=make_tree(NUM, NULL, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
+[a-zA-Z][a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
 %%
