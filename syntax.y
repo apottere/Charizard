@@ -12,10 +12,12 @@
  
 void yyerror(const char *str)
 {
-		char* prefix = "cowsay -d error: ";
-		char* error = (char*) malloc(sizeof(char)*(strlen(prefix) + strlen(str)));
-		sprintf(error, "cowsay -d error: %s\n",str);
-        system(error);
+		char* prefix = "cowsay -d -f dragon-and-cow Your program is unacceptable!  Your failure: ";
+		char* error = (char*) malloc(sizeof(char)*(strlen(prefix) + strlen(str) + 2));
+		sprintf(error, "%s%s\n",prefix, str);
+        if(system(error)) {
+			fprintf(stderr, "Install cowsay already! %s\n", str);
+		}
 }
  
 int yywrap()
@@ -30,23 +32,23 @@ main()
 
 %}
 
-%token IDENT NUM INTEGER
+%token IDENT NUM INTEGER REAL FLOAT
 %token OBRACK EBRACK OSBRACK ESBRACK
 %token MULOP SIGN RELOP
 %token NOT OR ASSIGNOP
-%token WHILE DO IF THEN ELSE BEGIN_T END
+%token WHILE DO IF THEN ELSEIF ELSE BEGIN_T END ELSEIF_LIST
 %token COLON SEMICOLON COMMA DOT
 %token PROGRAM FUNCTION ARRAY OF VAR PROCEDURE
 
 // Too lazy to make my own enumeration!
-%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER
+%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER IFTE IFT PROCEDURE_CALL COMPOUND_STATEMENT FOR TO
 
 %%
 
 program:
 	   PROGRAM IDENT OBRACK identifier_list EBRACK SEMICOLON declarations subprogram_declarations compound_statement DOT
 	   {
-	   	fprintf(stderr, "Program found:\n");
+	   	//fprintf(stderr, "Program found:\n");
 		vector* children = vector_malloc();
 		vector_add(children, $7);
 		vector_add(children, $8);
@@ -54,7 +56,10 @@ program:
 		tree_t* final = make_tree(PROGRAM, children);
 		print_tree(final, 0);
 
-		system("cowsay -f dragon Charizard approves of your program.");
+		if(system("cowsay -f dragon I approve of your program.")) {
+			printf("Install cowsay, or reap the consequences!\n");
+			exit(1);
+		}
 	   }
 	   ;
 
@@ -103,6 +108,7 @@ declarations:
 type:
 	standard_type
 	{
+		$$ = $1;
 	}
 	|
 	ARRAY OSBRACK NUM DOT DOT NUM ESBRACK OF standard_type
@@ -122,9 +128,15 @@ standard_type:
 			 INTEGER
 			 {
 				vector* children = vector_malloc();
-				vector_add(children, $1);
+				vector_add(children, make_tree(INTEGER, NULL));
 				$$ = make_tree(TYPE, children);
-			 	$$ = make_tree(INTEGER, NULL);
+			 }
+			 |
+			 REAL
+			 {
+				vector* children = vector_malloc();
+				vector_add(children, make_tree(REAL, NULL));
+				$$ = make_tree(TYPE, children);
 			 }
 			 ;
 
@@ -234,17 +246,17 @@ optional_statements:
 statement_list:
 			  statement SEMICOLON
 			  {
-				fprintf(stderr, "TERM-----------------------------------------------\n");
-				fprintf(stderr, "DOLLAR 1:\n");
-				print_tree($1, 0);
+				//fprintf(stderr, "TERM-----------------------------------------------\n");
+				//fprintf(stderr, "DOLLAR 1:\n");
+				//print_tree($1, 0);
 
 			  	vector* children = vector_malloc();
 				vector_add(children, $1);
 			  	$$ = make_tree(STATEMENT_LIST, children);
 
-				fprintf(stderr, "DOLLAR DOLLAR:\n");
-				print_tree($$, 0);
-				fprintf(stderr, "-------------------------------------------------\n");
+				//fprintf(stderr, "DOLLAR DOLLAR:\n");
+				//print_tree($$, 0);
+				//fprintf(stderr, "-------------------------------------------------\n");
 			  }
 			  |
 			  statement_list statement SEMICOLON
@@ -255,63 +267,131 @@ statement_list:
 			  ;
 
 statement:
+		 assign_statement
+		 {
+		 	$$ = $1;
+		 }
+		 |
+		 procedure_statement
+		 {
+		 	$$ = $1;
+		 }
+		 |
+		 compound_statement
+		 {
+		 	
+			vector* children = vector_malloc();
+			vector_add(children, $1);
+			$$ = make_tree(COMPOUND_STATEMENT, children);
+		 }
+		 |
+		 IF expr THEN statement elseif ELSE statement
+		 {
+			vector* children = vector_malloc();
+			vector* children2 = vector_malloc();
+			vector* children3 = vector_malloc();
+			vector* children4 = vector_malloc();
+			vector_add(children2, $2);
+			vector_add(children3, $4);
+			vector_add(children4, $7);
+			
+			vector_add(children, make_tree(IF, children2));
+			vector_add(children, make_tree(THEN, children3));
+			vector_add(children, $5);
+			vector_add(children, make_tree(ELSE, children4));
+
+			$$ = make_tree(IFTE, children);
+		 } /*
+		 |
+		 IF expr THEN statement
+		 {
+			vector* children = vector_malloc();
+			vector_add(children, $2);
+			vector_add(children, $4);
+			$$ = make_tree(IFT, children);
+		 } */
+		 |
+		 WHILE expr DO statement
+		 {
+			vector* children = vector_malloc();
+			vector_add(children, $2);
+			vector_add(children, $4);
+			$$ = make_tree(WHILE, children);
+		 }
+		 |
+		 FOR assign_statement TO expr DO statement
+		 {
+			vector* children = vector_malloc();
+			vector_add(children, $2);
+			vector_add(children, $4);
+			vector_add(children, $6);
+			$$ = make_tree(FOR, children);
+		 }
+		 ;
+
+assign_statement:
 		 variable ASSIGNOP expr
 		 {
-			fprintf(stderr, "STATEMENT: ASSIGN-----------------------------------------------\n");
-			fprintf(stderr, "DOLLAR 1:\n");
-			print_tree($1, 0);
-			fprintf(stderr, "DOLLAR 3:\n");
-			print_tree($3, 0);
+			//fprintf(stderr, "STATEMENT: ASSIGN-----------------------------------------------\n");
+			//fprintf(stderr, "DOLLAR 1:\n");
+			//print_tree($1, 0);
+			//fprintf(stderr, "DOLLAR 3:\n");
+			//print_tree($3, 0);
 
-		 	fprintf(stderr, "FOUND ASSIGN OP\n");
+		 	//fprintf(stderr, "FOUND ASSIGN OP\n");
 			vector* children = vector_malloc();
 			vector_add(children, $1);
 			vector_add(children, $3);
 		 	$$ = make_tree(ASSIGNOP, children);
 
-			fprintf(stderr, "DOLLAR DOLLAR:\n");
-			print_tree($$, 0);
-			fprintf(stderr, "-------------------------------------------------\n");
-		 }
-		 |
-		 procedure_statement
-		 |
-		 {
-		 	fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!UNWRITTEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-		 }
-		 compound_statement
-		 {
-		 	fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!UNWRITTEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-		 }
-		 |
-		 IF expr THEN statement ELSE statement
-		 {
-		 	fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!UNWRITTEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-		 }
-		 |
-		 WHILE expr DO statement
-		 {
-		 	fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!UNWRITTEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+			//fprintf(stderr, "DOLLAR DOLLAR:\n");
+			//print_tree($$, 0);
+			//fprintf(stderr, "-------------------------------------------------\n");
 		 }
 		 ;
+
+elseif:
+	  elseif ELSEIF expr THEN statement
+	  {
+		vector* children = vector_malloc();
+		vector_add(children, $3);
+		vector_add(children, $5);
+
+		if($1 == NULL) {
+
+			vector* children2 = vector_malloc();
+			vector_add(children2, make_tree(ELSEIF, children));
+
+			$$ = make_tree(ELSEIF_LIST, children2);
+
+		} else {
+			vector_add($1->children, make_tree(ELSEIF, children));
+			$$ = $1;
+		}
+	  }
+	  |
+	  {
+	  	$$ = NULL;
+	  }
+	  ;
 
 variable:
 		IDENT
 		{
-			fprintf(stderr, "VARIABLE-----------------------------------------------\n");
-			fprintf(stderr, "DOLLAR 1:\n");
-			print_tree($1, 0);
+			//fprintf(stderr, "VARIABLE-----------------------------------------------\n");
+			//fprintf(stderr, "DOLLAR 1:\n");
+			//print_tree($1, 0);
 
 			$$ = $1;
 
-			fprintf(stderr, "DOLLAR DOLLAR:\n");
-			print_tree($$, 0);
-			fprintf(stderr, "-------------------------------------------------\n");
+			//fprintf(stderr, "DOLLAR DOLLAR:\n");
+			//print_tree($$, 0);
+			//fprintf(stderr, "-------------------------------------------------\n");
 		}
 		|
 		IDENT OSBRACK simple_expr ESBRACK
 		{
-			printf("\t->Found an array: %s\n", $1->attribute.name);
+			//printf("\t->Found an array: %s\n", $1->attribute.name);
 			vector* children = vector_malloc();
 			vector_add(children, $1);
 			vector_add(children, $3);
@@ -322,12 +402,17 @@ variable:
 procedure_statement:
 				   IDENT 
 				   {
-				   	$$ = $1;
+						vector* children = vector_malloc();
+						vector_add(children, $1);
+						$$ = make_tree(PROCEDURE_CALL, children);
 				   }
 				   |
 				   IDENT OBRACK expr_list EBRACK
 				   {
-						fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!UNWRITTEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+						vector* children = vector_malloc();
+						vector_add(children, $1);
+						vector_add(children, $3);
+						$$ = make_tree(PROCEDURE_CALL, children);
 				   }
 				   ;
 
@@ -350,13 +435,13 @@ expr:
 	 simple_expr
 	 {
 	 	$$ = $1;
-	 	fprintf(stderr, "EXPR-----------------------------------------------\n");
-		fprintf(stderr, "DOLLAR 1:\n");
-		print_tree($1, 0);
+	 	//fprintf(stderr, "EXPR-----------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR 1:\n");
+		//print_tree($1, 0);
 
-		fprintf(stderr, "DOLLAR DOLLAR:\n");
-		print_tree($$, 0);
-		fprintf(stderr, "-------------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR DOLLAR:\n");
+		//print_tree($$, 0);
+		//fprintf(stderr, "-------------------------------------------------\n");
 	 }
 	 |
 	 simple_expr RELOP simple_expr
@@ -375,18 +460,18 @@ simple_expr:
 	|
 	simple_expr SIGN term
 	{
-	 	fprintf(stderr, "SIMPLE_EXPR-----------------------------------------------\n");
-		fprintf(stderr, "DOLLAR 1:\n");
-		print_tree($1, 0);
-		fprintf(stderr, "DOLLAR 3:\n");
-		print_tree($3, 0);
+	 	//fprintf(stderr, "SIMPLE_EXPR-----------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR 1:\n");
+		//print_tree($1, 0);
+		//fprintf(stderr, "DOLLAR 3:\n");
+		//print_tree($3, 0);
 
 		vector_add($2->children, $1);
 		vector_add($2->children, $3);
 		$$ = $2;
-		fprintf(stderr, "DOLLAR DOLLAR:\n");
-		print_tree($$, 0);
-		fprintf(stderr, "-------------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR DOLLAR:\n");
+		//print_tree($$, 0);
+		//fprintf(stderr, "-------------------------------------------------\n");
 	}
 	|
 	simple_expr OR term
@@ -401,15 +486,15 @@ simple_expr:
 term:
 	 factor
 	 {
-	 	fprintf(stderr, "TERM-----------------------------------------------\n");
-		fprintf(stderr, "DOLLAR 1:\n");
-		print_tree($1, 0);
+	 	//fprintf(stderr, "TERM-----------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR 1:\n");
+		//print_tree($1, 0);
 
 	  	$$ = $1;
 
-		fprintf(stderr, "DOLLAR DOLLAR:\n");
-		print_tree($$, 0);
-		fprintf(stderr, "-------------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR DOLLAR:\n");
+		//print_tree($$, 0);
+		//fprintf(stderr, "-------------------------------------------------\n");
 	 }
 	 |
 	 SIGN factor
@@ -421,32 +506,32 @@ term:
 	 |
 	 term MULOP factor
 	 {
-	 	fprintf(stderr, "TERM-----------------------------------------------\n");
-		fprintf(stderr, "DOLLAR 1:\n");
-		print_tree($1, 0);
-		fprintf(stderr, "DOLLAR 3:\n");
-		print_tree($3, 0);
+	 	//fprintf(stderr, "TERM-----------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR 1:\n");
+		//print_tree($1, 0);
+		//fprintf(stderr, "DOLLAR 3:\n");
+		//print_tree($3, 0);
 
 		vector_add($2->children, $1);
 		vector_add($2->children, $3);
 		$$ = $2;
 
-		fprintf(stderr, "DOLLAR DOLLAR:\n");
-		print_tree($$, 0);
-		fprintf(stderr, "-------------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR DOLLAR:\n");
+		//print_tree($$, 0);
+		//fprintf(stderr, "-------------------------------------------------\n");
 	 }
 	 ;
 
 factor:
 	  IDENT
 	  {
-	  	printf("\t->Found an identifier: %s\n", $1->attribute.name);
+	  	//printf("\t->Found an identifier: %s\n", $1->attribute.name);
 		$$ = $1;
 	  }
 	  |
 	  IDENT OSBRACK simple_expr ESBRACK
 	  {
-	  	printf("\t->Found an array: %s\n", $1->attribute.name);
+	  	//printf("\t->Found an array: %s\n", $1->attribute.name);
 		vector* children = vector_malloc();
 		vector_add(children, $1);
 		vector_add(children, $3);
@@ -455,7 +540,7 @@ factor:
 	  |
 	  IDENT OBRACK expr_list EBRACK
 	  {
-	  	fprintf(stderr, "Found a function call: %s\n", $1->attribute.name);
+	  	//fprintf(stderr, "Found a function call: %s\n", $1->attribute.name);
 		vector* children = vector_malloc();
 		vector_add(children, $1);
 		vector_add(children, $3);
@@ -464,21 +549,27 @@ factor:
 	  |
 	  NUM
 	  {
-	  	printf("\t->Found a number: %d\n", $1->attribute.ival);
+	  	//printf("\t->Found a number: %d\n", $1->attribute.ival);
+		$$ = $1;
+	  }
+	  |
+	  FLOAT
+	  {
+	  	printf("\t->Found a float: %f\n", $1->attribute.fval);
 		$$ = $1;
 	  }
 	  |
 	  OBRACK expr EBRACK
 	  {
-	 	fprintf(stderr, "FACTOR: (EXPR)-----------------------------------------------\n");
-		fprintf(stderr, "DOLLAR 2:\n");
-		print_tree($2, 0);
+	 	//fprintf(stderr, "FACTOR: (EXPR)-----------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR 2:\n");
+		//print_tree($2, 0);
 
 	  	$$ = $2;
 
-		fprintf(stderr, "DOLLAR DOLLAR:\n");
-		print_tree($$, 0);
-		fprintf(stderr, "-------------------------------------------------\n");
+		//fprintf(stderr, "DOLLAR DOLLAR:\n");
+		//print_tree($$, 0);
+		//fprintf(stderr, "-------------------------------------------------\n");
 	  }
 	  |
 	  NOT factor

@@ -5,6 +5,8 @@
 #include "y.tab.h"
 #include "vector.h"
 
+#define TREE_WIDTH 5
+
 
 tree_t *make_tree( int type, vector* children )
 {
@@ -13,7 +15,6 @@ tree_t *make_tree( int type, vector* children )
 
 	if(children == NULL) {
 
-		fprintf(stderr, "Making vector for tree...\n");
 		vector *v = malloc(sizeof(vector));
 		assert( v != NULL );
 		vector_init(v);
@@ -34,8 +35,13 @@ void print_tree( tree_t *t, int spaces )
 
 	if ( t == NULL ) return;
 
-	for (i=0 ; i<spaces; i++)
-		fprintf( stderr, " " );
+	for (i=0 ; i<spaces; i++) {
+		if(!(i % TREE_WIDTH)) {
+			fprintf( stderr, "|" );
+		} else {
+			fprintf( stderr, " " );
+		}
+	}
 
 	switch (t->type) {
 
@@ -65,6 +71,58 @@ void print_tree( tree_t *t, int spaces )
 
 	case INTEGER:
 		fprintf( stderr, "[INTEGER]" );
+		break;
+
+	case REAL:
+		fprintf( stderr, "[REAL]" );
+		break;
+
+	case FOR:
+		fprintf( stderr, "[FOR]" );
+		break;
+
+	case WHILE:
+		fprintf( stderr, "[WHILE]" );
+		break;
+
+	case IF:
+		fprintf( stderr, "[IF]" );
+		break;
+
+	case THEN:
+		fprintf( stderr, "[THEN]" );
+		break;
+
+	case ELSE:
+		fprintf( stderr, "[ELSE]" );
+		break;
+
+	case COMPOUND_STATEMENT:
+		fprintf( stderr, "[COMPOUND STATEMENT]" );
+		break;
+
+	case PROCEDURE_CALL:
+		fprintf( stderr, "[PROCEDURE CALL]" );
+		break;
+
+	case IFT:
+		fprintf( stderr, "[IF THEN]" );
+		break;
+
+	case ELSEIF:
+		fprintf( stderr, "[ELSE IF]" );
+		break;
+
+	case ELSEIF_LIST:
+		fprintf( stderr, "[ELSE IF LIST]" );
+		break;
+
+	case RELOP:
+		fprintf( stderr, "[RELOP: %s]", t->attribute.name);
+		break;
+
+	case IFTE:
+		fprintf( stderr, "[IF THEN ELSE]" );
 		break;
 
 	case FUNCTION_HEADER:
@@ -131,6 +189,10 @@ void print_tree( tree_t *t, int spaces )
 		fprintf( stderr, "[NUM:%d]", t->attribute.ival );
 		break;
 
+	case FLOAT:
+		fprintf( stderr, "[FLOAT:%f]", t->attribute.fval );
+		break;
+
 	case IDENT:
 		fprintf( stderr, "[IDENT:%s]", t->attribute.name );
 		break;
@@ -141,6 +203,6 @@ void print_tree( tree_t *t, int spaces )
 	fprintf( stderr, "\n" );
 
 	for(i = 0; i < t->children->count; i++) {
-		print_tree( vector_get(t->children, i), spaces+4 );
+		print_tree( vector_get(t->children, i), spaces+TREE_WIDTH );
 	}
 }

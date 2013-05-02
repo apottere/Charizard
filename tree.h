@@ -7,6 +7,7 @@ typedef struct tree_s {
 	int type;
 	union {
 		int ival;	/* NUM */
+		double fval;	/* FLOAT */
 		char* name;
 	} attribute;
 	vector* children;

@@ -5,12 +5,17 @@
 %}
 
 
+
 %%
+[(][*](.|[ \t\n])*?[*][)]
 not						return NOT;
 while					return WHILE;
+for						return FOR;
+to						return TO;
 do						return DO;
 if						return IF;
 then					return THEN;
+else[ ]if				return ELSEIF;
 else					return ELSE;
 begin					return BEGIN_T;
 end						return END;
@@ -20,6 +25,7 @@ of						return OF;
 array					return ARRAY;
 var						return VAR;
 integer					return INTEGER;
+real					return REAL;
 procedure				return PROCEDURE;
 [=|<>|<|<=|>|>=]		yylval=make_tree(RELOP, NULL); yylval->attribute.name = strdup(yytext); return RELOP;
 
@@ -42,6 +48,7 @@ or						return OR;
 \n                      
 [ \t]+
 
+[0-9]+?\.[0-9]+			yylval=make_tree(FLOAT, NULL); yylval->attribute.fval = atof(yytext); return FLOAT;
 [0-9]+					yylval=make_tree(NUM, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
 [a-zA-Z][a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
 %%
