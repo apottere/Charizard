@@ -4,6 +4,8 @@
 #include "vector.h"
 }
 
+%error-verbose
+
 %{
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +14,7 @@
  
 void yyerror(const char *str)
 {
-		char* prefix = "cowsay -d -f dragon-and-cow Your program is unacceptable!  Your failure: ";
+		char* prefix = "cowsay -d -f dragon-and-cow -W57 Your program is unacceptable!       Failure: ";
 		char* error = (char*) malloc(sizeof(char)*(strlen(prefix) + strlen(str) + 2));
 		sprintf(error, "%s%s\n",prefix, str);
         if(system(error)) {
@@ -41,7 +43,7 @@ main()
 %token PROGRAM FUNCTION ARRAY OF VAR PROCEDURE
 
 // Too lazy to make my own enumeration!
-%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER IFTE IFT PROCEDURE_CALL COMPOUND_STATEMENT FOR TO
+%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT
 
 %%
 
@@ -141,7 +143,7 @@ standard_type:
 			 ;
 
 subprogram_declarations:
-					   subprogram_declarations subprogram_declaration SEMICOLON
+					   subprogram_declarations subprogram_declaration
 					   {
 					   	if($1 == NULL) {
 							vector* children = vector_malloc();
@@ -244,7 +246,7 @@ optional_statements:
 				   ;
 
 statement_list:
-			  statement SEMICOLON
+			  statement
 			  {
 				//fprintf(stderr, "TERM-----------------------------------------------\n");
 				//fprintf(stderr, "DOLLAR 1:\n");
@@ -259,7 +261,7 @@ statement_list:
 				//fprintf(stderr, "-------------------------------------------------\n");
 			  }
 			  |
-			  statement_list statement SEMICOLON
+			  statement_list statement
 			  {
 			  	vector_add($1->children, $2);
 				$$ = $1;
@@ -267,12 +269,12 @@ statement_list:
 			  ;
 
 statement:
-		 assign_statement
+		 assign_statement SEMICOLON
 		 {
 		 	$$ = $1;
 		 }
 		 |
-		 procedure_statement
+		 procedure_statement SEMICOLON
 		 {
 		 	$$ = $1;
 		 }
@@ -285,31 +287,27 @@ statement:
 			$$ = make_tree(COMPOUND_STATEMENT, children);
 		 }
 		 |
-		 IF expr THEN statement elseif ELSE statement
+		 IF expr THEN statement elseif else END
 		 {
 			vector* children = vector_malloc();
 			vector* children2 = vector_malloc();
-			vector* children3 = vector_malloc();
-			vector* children4 = vector_malloc();
 			vector_add(children2, $2);
-			vector_add(children3, $4);
-			vector_add(children4, $7);
-			
 			vector_add(children, make_tree(IF, children2));
-			vector_add(children, make_tree(THEN, children3));
-			vector_add(children, $5);
-			vector_add(children, make_tree(ELSE, children4));
 
-			$$ = make_tree(IFTE, children);
-		 } /*
-		 |
-		 IF expr THEN statement
-		 {
-			vector* children = vector_malloc();
-			vector_add(children, $2);
-			vector_add(children, $4);
-			$$ = make_tree(IFT, children);
-		 } */
+			vector* children3 = vector_malloc();
+			vector_add(children3, $4);
+			vector_add(children, make_tree(THEN, children3));
+
+			if($5 != NULL) {
+				vector_add(children, $5);
+			}
+
+			if($6 != NULL) {
+				vector_add(children, $6);
+			}
+
+			$$ = make_tree(IF_STATEMENT, children);
+		 }
 		 |
 		 WHILE expr DO statement
 		 {
@@ -349,6 +347,19 @@ assign_statement:
 			//fprintf(stderr, "-------------------------------------------------\n");
 		 }
 		 ;
+
+else:
+	ELSE statement
+	{
+		vector* children = vector_malloc();
+		vector_add(children, $2);
+		$$ = make_tree(ELSE, children);
+	}
+	|
+	{
+		$$ = NULL;
+	}
+	;
 
 elseif:
 	  elseif ELSEIF expr THEN statement

@@ -73,6 +73,10 @@ void print_tree( tree_t *t, int spaces )
 		fprintf( stderr, "[INTEGER]" );
 		break;
 
+	case IF_STATEMENT:
+		fprintf( stderr, "[IF STATEMENT]" );
+		break;
+
 	case REAL:
 		fprintf( stderr, "[REAL]" );
 		break;
@@ -83,10 +87,6 @@ void print_tree( tree_t *t, int spaces )
 
 	case WHILE:
 		fprintf( stderr, "[WHILE]" );
-		break;
-
-	case IF:
-		fprintf( stderr, "[IF]" );
 		break;
 
 	case THEN:
@@ -105,8 +105,8 @@ void print_tree( tree_t *t, int spaces )
 		fprintf( stderr, "[PROCEDURE CALL]" );
 		break;
 
-	case IFT:
-		fprintf( stderr, "[IF THEN]" );
+	case IF:
+		fprintf( stderr, "[IF]" );
 		break;
 
 	case ELSEIF:
@@ -119,10 +119,6 @@ void print_tree( tree_t *t, int spaces )
 
 	case RELOP:
 		fprintf( stderr, "[RELOP: %s]", t->attribute.name);
-		break;
-
-	case IFTE:
-		fprintf( stderr, "[IF THEN ELSE]" );
 		break;
 
 	case FUNCTION_HEADER:
