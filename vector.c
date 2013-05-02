@@ -1,9 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
  
 #include "vector.h"
  
+vector* vector_malloc() {
+	
+	vector* v = (vector*) malloc(sizeof(vector));
+	assert(v != NULL);
+	vector_init(v);
+
+	return v;
+
+}
+
+
 void vector_init(vector *v)
 {
 	v->data = NULL;

@@ -12,4 +12,4 @@ syntax:
 	yacc $(DEBUG) -v syntax.y
 
 clean:
-	rm -f *.o y.tab.* lex.yy.c y.output Charizard
+	rm -f *.o y.tab.* lex.yy.c y.output out_test* Charizard

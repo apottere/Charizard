@@ -21,7 +21,7 @@ array					return ARRAY;
 var						return VAR;
 integer					return INTEGER;
 procedure				return PROCEDURE;
-[=|<>|<|<=|>|>=]		return RELOP;
+[=|<>|<|<=|>|>=]		yylval=make_tree(RELOP, NULL); yylval->attribute.name = strdup(yytext); return RELOP;
 
 
 [(]						return OBRACK;
@@ -30,8 +30,8 @@ procedure				return PROCEDURE;
 \]						return ESBRACK;
 
 or						return OR;
-[*|/]|div|mod|and		return MULOP;
-[+|-]					return SIGN;
+[*|/]|div|mod|and		yylval=make_tree(MULOP, NULL); yylval->attribute.name = strdup(yytext); return MULOP;
+[+|-]					yylval=make_tree(SIGN, NULL); yylval->attribute.name = strdup(yytext); return SIGN;
 
 ,						return COMMA;
 \.						return DOT;
@@ -42,6 +42,6 @@ or						return OR;
 \n                      
 [ \t]+
 
-[0-9]+					yylval=make_tree(NUM, NULL, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
-[a-zA-Z][a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
+[0-9]+					yylval=make_tree(NUM, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
+[a-zA-Z][a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
 %%

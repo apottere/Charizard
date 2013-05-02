@@ -1,5 +1,5 @@
 #!/bin/bash
-TESTS="test test2 test3"
+TESTS="test1"
 OUT="+ "
 make clean
 make

@@ -7,6 +7,7 @@ typedef struct vector_ {
     int count;
 } vector;
  
+vector* vector_malloc();
 void vector_init(vector*);
 int vector_count(vector*);
 void vector_add(vector*, void*);
