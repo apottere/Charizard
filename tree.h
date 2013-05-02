@@ -2,6 +2,8 @@
 #define TREE_H
 
 #include "vector.h"
+#include "scope.h"
+
 
 typedef struct tree_s {
 	int type;
@@ -9,6 +11,7 @@ typedef struct tree_s {
 		int ival;	/* NUM */
 		double fval;	/* FLOAT */
 		char* name;
+		scope* scope;
 	} attribute;
 	vector* children;
 }

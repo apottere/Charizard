@@ -1,9 +1,10 @@
+PKGCONFIG=`pkg-config --cflags --libs glib-2.0`
 DEBUG= -d
 CFLAGS= -lfl
 LFLAGS=-DYYSTYPE=tree_t*
 
 all: lexical syntax
-	gcc lex.yy.c y.tab.c tree.c vector.c -g -o Charizard $(CFLAGS) $(LFLAGS)
+	gcc lex.yy.c y.tab.c scope.c tree.c vector.c $(PKGCONFIG) -g -o Charizard $(CFLAGS) $(LFLAGS)
 
 lexical:
 	lex $(DEBUG) lexical.l

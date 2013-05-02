@@ -7,7 +7,7 @@
 
 
 %%
-[(][*](.|[ \t\n])*?[*][)]
+[(]\*([^*]|\**[^\*[)]])*\*+[)]
 not						return NOT;
 while					return WHILE;
 for						return FOR;
@@ -48,7 +48,7 @@ or						return OR;
 \n                      
 [ \t]+
 
-[0-9]+?\.[0-9]+			yylval=make_tree(FLOAT, NULL); yylval->attribute.fval = atof(yytext); return FLOAT;
+[0-9]+\.[0-9]+			yylval=make_tree(FLOAT, NULL); yylval->attribute.fval = atof(yytext); return FLOAT;
 [0-9]+					yylval=make_tree(NUM, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
 [a-zA-Z][a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
 %%

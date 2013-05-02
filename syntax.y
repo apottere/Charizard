@@ -43,7 +43,7 @@ main()
 %token PROGRAM FUNCTION ARRAY OF VAR PROCEDURE
 
 // Too lazy to make my own enumeration!
-%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT
+%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT ARRAY_RANGE NONE
 
 %%
 
@@ -57,6 +57,8 @@ program:
 		vector_add(children, $9);
 		tree_t* final = make_tree(PROGRAM, children);
 		print_tree(final, 0);
+		init_scoping(final, NULL);
+		print_scope(final->attribute.scope, 0);
 
 		if(system("cowsay -f dragon I approve of your program.")) {
 			printf("Install cowsay, or reap the consequences!\n");
@@ -113,18 +115,37 @@ type:
 		$$ = $1;
 	}
 	|
-	ARRAY OSBRACK NUM DOT DOT NUM ESBRACK OF standard_type
+	ARRAY OSBRACK array_range ESBRACK OF standard_type
 	{
 		vector* children = vector_malloc();
 		vector_add(children, $3);
 		vector_add(children, $6);
-		
-
-		vector* children2 = vector_malloc();
-		vector_add(children2, make_tree(ARRAY_TYPE, children));
-		$$ = make_tree(TYPE, children2);
+		$$ = make_tree(ARRAY, children);
 	}
 	;
+
+array_range:
+		   NUM DOT DOT NUM
+		   {
+			vector* children = vector_malloc();
+			vector_add(children, $1);
+			vector_add(children, $4);
+			$$ = make_tree(ARRAY_RANGE, children);
+		   }
+		   |
+		   NUM
+		   {
+			vector* children = vector_malloc();
+
+			tree_t* new = make_tree(NUM, NULL);
+			new->attribute.ival = 1;
+
+			vector_add(children, new);
+			vector_add(children, $1);
+			$$ = make_tree(ARRAY_RANGE, children);
+		   }
+		   ;
+
 
 standard_type:
 			 INTEGER
@@ -566,7 +587,7 @@ factor:
 	  |
 	  FLOAT
 	  {
-	  	printf("\t->Found a float: %f\n", $1->attribute.fval);
+	  	//printf("\t->Found a float: %f\n", $1->attribute.fval);
 		$$ = $1;
 	  }
 	  |
