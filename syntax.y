@@ -60,6 +60,9 @@ program:
 		init_scoping(final, NULL);
 		print_scope(final->attribute.scope, "PROGRAM");
 
+		//fprintf(stderr, "SCOPE VERIFIED AND PRINTED.");
+		semantic_check(final, final->attribute.scope);
+
 		if(system("cowsay -f dragon I approve of your program.")) {
 			printf("Install cowsay, or reap the consequences!\n");
 			exit(1);

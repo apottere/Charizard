@@ -118,7 +118,7 @@ void assert_new(gpointer data, gpointer user_data) {
 
 
 void semantic_error(char *str) {
-		char* prefix = "cowsay -d -f dragon-and-cow -W57 Your program is unacceptable!       Failure: ";
+		char* prefix = "cowsay -d -f dragon-and-cow -W80 Your program is unacceptable! Failure: ";
 		char* error = (char*) malloc(sizeof(char)*(strlen(prefix) + strlen(str) + 2));
 		sprintf(error, "%s%s\n",prefix, str);
         if(system(error)) {
@@ -281,6 +281,7 @@ init_scoping(tree_t* t, scope* parent) {
 			t->attribute.scope = (scope*) malloc(sizeof(scope));
 			t->attribute.scope->depth = 0;
 			t->attribute.scope->parent = NULL;
+			t->attribute.scope->scope_id = "PROGRAM";
 			hash_init(t->attribute.scope);
 
 			new_parent = t->attribute.scope;
@@ -307,6 +308,7 @@ init_scoping(tree_t* t, scope* parent) {
 			t->attribute.scope = (scope*) malloc(sizeof(scope));
 			t->attribute.scope->depth = 1;
 			t->attribute.scope->parent = parent;
+			t->attribute.scope->scope_id = strdup(CHILD( CHILD(t, 0), 0)->attribute.name);
 			hash_init(t->attribute.scope);
 
 
@@ -348,33 +350,112 @@ void semantic_check(tree_t* t, scope* parent) {
 
 		case ASSIGNOP:
 			fprintf(stderr, "ASSIGNOP: \n");
-			recursive_assignment_check(CHILD(t, 0), CHILD(t,1));
+			recursive_assignment_check(CHILD(t, 0), CHILD(t,1), parent);
 
+			return;
 
 	}
 
 	max = vector_count(t->children);
 	for(i = 0; i < max; i++) {
-		init_scoping(CHILD(t, i), new_parent == NULL? parent : new_parent);
+		semantic_check(CHILD(t, i), new_parent == NULL? parent : new_parent);
 	}
 }
 
 
 
-void recursive_assignment_check(tree_t* left, tree_t* right) {
+void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent) {
 
 	int glob_type = NULL;
 
-	tree_t* type = table_lookup(left, &glob_type);
+	switch(left->type) {
+		case IDENT:
+			break;
 
-	eval_expr(right, &glob_type);
+		default:
+			fprintf(stderr, "Erroring");
+			semantic_error("Only identifiers are allowed to the left of an assignment.");
+	}
+
+	elem* e = table_lookup(left, parent);
+
+	if(e == NULL) {
+		char* err;
+		asprintf(&err, "Table lookup failed for: '%s'", left->attribute.name);
+		semantic_error(err);
+
+	} else if(e->retval == FUNCTION) {
+
+		if(!my_strcmp(e->name, parent->scope_id)) {
+			char* err;
+			asprintf(&err, "Non-current function id on left of assignment: '%s'", left->attribute.name);
+			semantic_error(err);
+		}
+
+		glob_type = e->type->type;
+		fprintf(stderr, "\t->type: ");
+		print_tree(e->type, 0);
+
+	} else if(e->retval == PROCEDURE) {
+		char* err;
+		asprintf(&err, "Procedures are not allowed on left of assignment: '%s'", left->attribute.name);
+		semantic_error(err);
+		
+	} else {
+		glob_type = e->type->type;
+		fprintf(stderr, "\t->type: ");
+		print_tree(e->type, 0);
+
+	}
+
+
+
+	return;
+//	eval_expr(right, &glob_type);
+
+}
+
+my_strcmp(char* s1, char* s2) {
+
+	if(strlen(s1) == strlen(s2) && !strcmp(s1, s2)) {
+		return 1;
+	}
+	return 0;
 
 }
 
 
-tree_t* table_lookup(tree_t* left, int* type) {
+elem* table_lookup(tree_t* left, scope* table) {
 
+	elem* e = NULL;
+	int i;
 
+	for(i = 0; i < HASH_TABLE_SIZE; i++) {
+		if(table->map[i] != NULL) {
+
+			GSList* ptr = table->map[i];
+			while(ptr != NULL) {
+
+				if(strlen(((elem*)ptr->data)->name) == strlen(left->attribute.name) && !strcmp(((elem*)ptr->data)->name, left->attribute.name)) {
+					e = (elem*)ptr->data;
+					fprintf(stderr, "\t->Table lookup success! ID: %s\n", e->name);
+					/*
+				} else {
+					fprintf(stderr, "'%s' != '%s'", ((elem*)ptr->data)->name, left->attribute.name);
+					*/
+				}
+
+				ptr = g_slist_next(ptr);
+			}
+		}
+	}
+	
+	if(e == NULL && table->parent != NULL) {
+		e = table_lookup(left, table->parent);
+	}
+
+	
+	return e;
 }
 
 

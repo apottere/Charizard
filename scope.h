@@ -14,6 +14,7 @@ typedef struct scope_s {
 	GSList* map[HASH_TABLE_SIZE];
 	int depth;
 	struct scope_s* parent;
+	char* scope_id;
 }
 scope;
 
@@ -42,6 +43,6 @@ void pad_spaces(int pad, FILE* stream);
 
 void semantic_check(tree_t* t, scope* parent);
 int eval_expr(tree_t* right, int* type);
-tree_t* table_lookup(tree_t* left, int* type);
-void recursive_assignment_check(tree_t* left, tree_t* right);
+elem* table_lookup(tree_t* left, scope* table);
+void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent);
 #endif
