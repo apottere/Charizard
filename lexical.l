@@ -50,5 +50,5 @@ or						return OR;
 
 [0-9]+\.[0-9]+			yylval=make_tree(FLOAT, NULL); yylval->attribute.fval = atof(yytext); return FLOAT;
 [0-9]+					yylval=make_tree(NUM, NULL); yylval->attribute.ival = atoi(yytext); return NUM;
-[a-zA-Z][a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
+[a-zA-Z_][_a-zA-Z0-9]*    yylval=make_tree(IDENT, NULL); yylval->attribute.name = strdup(yytext); return IDENT;
 %%

@@ -34,7 +34,7 @@ main()
 
 %}
 
-%token IDENT NUM INTEGER REAL FLOAT
+%token IDENT NUM INTEGER REAL FLOAT ARRAY_ACCESS
 %token OBRACK EBRACK OSBRACK ESBRACK
 %token MULOP SIGN RELOP
 %token NOT OR ASSIGNOP
@@ -43,7 +43,7 @@ main()
 %token PROGRAM FUNCTION ARRAY OF VAR PROCEDURE
 
 // Too lazy to make my own enumeration!
-%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST ARRAY_TYPE FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT ARRAY_RANGE NONE BOOLEAN
+%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT ARRAY_RANGE NONE BOOLEAN
 
 %%
 
@@ -118,7 +118,7 @@ type:
 		$$ = $1;
 	}
 	|
-	ARRAY OSBRACK array_range ESBRACK OF type
+	ARRAY OSBRACK array_range ESBRACK OF standard_type
 	{
 		vector* children = vector_malloc();
 		vector_add(children, $3);
@@ -188,16 +188,18 @@ subprogram_declarations:
 					   ;
 
 subprogram_declaration:
-					  subprogram_head declarations compound_statement
+					  subprogram_head declarations subprogram_declarations compound_statement
 					  {
 						vector* children = vector_malloc();
 						vector_add(children, $1);
 						vector_add(children, $2);
-						vector_add(children, $3);
+						if($3 != NULL) { vector_add(children, $3); }
+						vector_add(children, $4);
 						$$ = make_tree(FUNCTION, children);
 					  	
 					  }
 					  ;
+
 
 subprogram_head:
 			   FUNCTION IDENT arguments COLON standard_type SEMICOLON
@@ -432,7 +434,7 @@ variable:
 			vector* children = vector_malloc();
 			vector_add(children, $1);
 			vector_add(children, $3);
-			$$ = make_tree(ARRAY, children);
+			$$ = make_tree(ARRAY_ACCESS, children);
 		}
 		;
 
@@ -572,7 +574,7 @@ factor:
 		vector* children = vector_malloc();
 		vector_add(children, $1);
 		vector_add(children, $3);
-		$$ = make_tree(ARRAY, children);
+		$$ = make_tree(ARRAY_ACCESS, children);
 	  }
 	  |
 	  IDENT OBRACK expr_list EBRACK

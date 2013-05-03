@@ -45,8 +45,8 @@ void hash_insert(tree_t* t, tree_t* type_t, int rettype, scope* table, tree_t* s
 	new->type = type_t;
 	new->retval = rettype;
 	new->scope_base = scope_base;
-	fprintf(stderr, "Adding '%s' to table: \n", new->name);
-	print_tree(new->type, 0);
+	//fprintf(stderr, "Adding '%s' to table: \n", new->name);
+	//print_tree(new->type, 0);
 
 	if(table->map[hash] == NULL) {
 		table->map[hash] = g_slist_alloc();
@@ -143,24 +143,24 @@ void print_elem(gpointer data, gpointer user_data) {
 	int artype;
 	switch (edata->type->type) {
 		case INTEGER:
-			stype = "INTEGER        ";
+			stype = "INTEGER         ";
 			break;
 
 		case REAL:
-			stype = "REAL           ";
+			stype = "REAL            ";
 			break;
 
 		case ARRAY:
 			artype = get_array_type(edata->type);
 
 			if(artype == INTEGER) {
-				asprintf(&stype, "ARRAY[%d]INTEGER", edata->type->attribute.ival);
+				asprintf(&stype, "ARRAY OF INTEGER", edata->type->attribute.ival);
 
 			} else if (artype == REAL) {
 
-				asprintf(&stype, "ARRAY[%d]REAL   ", edata->type->attribute.ival);
+				asprintf(&stype, "ARRAY OF REAL   ", edata->type->attribute.ival);
 			} else {
-				stype = "ERROR         ";
+				stype = "ERROR          ";
 			}
 			break;
 	}
@@ -192,7 +192,7 @@ void print_elem(gpointer data, gpointer user_data) {
 	fprintf(stderr, "%s", edata->name);
 	int namepad = 42 - strlen(edata->name);
 	pad_spaces(namepad, stderr);
-	fprintf(stderr, "| %s    | %s   |\n", stype, rtype);
+	fprintf(stderr, "| %s   | %s   |\n", stype, rtype);
 	//fprintf(stderr, "| %s\t\t\t| %s\t\t\t| %s\t\t\t|\n", edata->name, stype, rtype);
 
 }
@@ -237,9 +237,9 @@ int get_array_type(tree_t* t) {
 void print_scope(scope* scope, char* name) {
 
 //	fprintf(stderr, "Printing scope!\n");
-	fprintf(stderr, "\n ________________________________________________________________________________\n");
-	fprintf(stderr, "| TABLE: %s", name);
-	int namepad = 35 - strlen(name);
+	fprintf(stderr, " ________________________________________________________________________________\n");
+	fprintf(stderr, "| TABLE: %s, %d", name, scope->depth);
+	int namepad = 32 - strlen(name);
 	pad_spaces(namepad, stderr);
 	fprintf(stderr, "| RETURN             | TYPE          |\n");
 
@@ -250,6 +250,8 @@ void print_scope(scope* scope, char* name) {
 			print_list(scope->map[i]);
 		}
 	}
+
+	fprintf(stderr, "\n");
 
 	vector* searches = vector_malloc();
 	int thing = FUNCTION;
@@ -306,7 +308,7 @@ init_scoping(tree_t* t, scope* parent) {
 //		case PROCEDURE:
 		case FUNCTION:
 			t->attribute.scope = (scope*) malloc(sizeof(scope));
-			t->attribute.scope->depth = 1;
+			t->attribute.scope->depth = parent->depth + 1;
 			t->attribute.scope->parent = parent;
 			t->attribute.scope->scope_id = strdup(CHILD( CHILD(t, 0), 0)->attribute.name);
 			hash_init(t->attribute.scope);
@@ -314,8 +316,8 @@ init_scoping(tree_t* t, scope* parent) {
 
 			new_parent = t->attribute.scope;
 
-			fprintf(stderr, "Function '%s' of type:\n", CHILD( CHILD(t, 0), 0)->attribute.name);
-			print_tree(t, 0);
+			//fprintf(stderr, "Function '%s' of type:\n", CHILD( CHILD(t, 0), 0)->attribute.name);
+			//print_tree(t, 0);
 			hash_insert( CHILD( CHILD(t, 0), 0), CHILD( CHILD( CHILD(t, 0), 2), 0), FUNCTION, parent , t);
 
 			break;
@@ -339,8 +341,15 @@ init_scoping(tree_t* t, scope* parent) {
 void semantic_check(tree_t* t, scope* parent) {
 
 	scope* new_parent = NULL;
+	int* second = NULL;
 	int i;
 	int max;
+	char* buf;
+	tree_t* n;
+	tree_t* m;
+	elem* e;
+	//fprintf(stderr, "Checking tree: \n");
+	//print_tree(t, 0);
 
 	switch(t->type) {
 
@@ -349,10 +358,104 @@ void semantic_check(tree_t* t, scope* parent) {
 			break;
 
 		case ASSIGNOP:
-			fprintf(stderr, "ASSIGNOP: \n");
+			//fprintf(stderr, "ASSIGNOP: \n");
 			recursive_assignment_check(CHILD(t, 0), CHILD(t,1), parent);
+			break;
 
-			return;
+		case IF:
+		case ELSEIF:
+		case WHILE:
+			//fprintf(stderr, "BOOLEAN BLOCK: \n");
+			n = CHILD(t, 0);
+			if(n->type != RELOP) {
+				if(n->type != NOT) {
+					if(!(n->type == MULOP && my_strcmp(n->attribute.name, "and"))) {
+						if(!(n->type == OR && my_strcmp(n->attribute.name, "or"))) {
+							asprintf(&buf, "Boolean statement must be boolean at highest level [at least].");
+							semantic_error(buf);
+						}
+					}
+				}
+			}
+
+			eval_expr(n, BOOLEAN, parent, NULL);
+			break;
+
+		case FOR:
+			//fprintf(stderr, "FOR BLOCK: \n");
+			e = table_lookup(CHILD( CHILD(t, 0), 0), parent);
+			if(!e->type->type == INTEGER) {
+				asprintf(&buf, "Float variable in for loop declaration: %s", e->name);
+				semantic_error(buf);
+			}
+
+			eval_expr(CHILD( CHILD(t, 0), 1), INTEGER, parent, NULL);
+			eval_expr( CHILD(t, 1), INTEGER, parent, NULL);
+			break;
+
+
+		case ARRAY_RANGE:
+			n = CHILD(t, 0);
+			m = CHILD(t, 1);
+
+			if(n->type == REAL) {
+				asprintf(&buf, "Float found in array range declaration: %f", n->attribute.fval);
+				semantic_error(buf);
+			}
+
+			if(m->type == REAL) {
+				asprintf(&buf, "Float found in array range declaration: %f", m->attribute.fval);
+				semantic_error(buf);
+			}
+
+			if(m->attribute.ival < n->attribute.ival) {
+				asprintf(&buf, "Invalid array range declaration: %d..%d", n->attribute.ival, m->attribute.ival);
+				semantic_error(buf);
+			}
+			break;
+
+		case ARRAY_ACCESS:
+			eval_expr(CHILD(t, 1), INTEGER, parent, NULL);
+			break;
+
+
+		//TODO: temp list to help me think.
+		case PROGRAM:
+		case DECLARATION_LIST:
+		case DECLARATION:
+		case IDENTIFIER_LIST:
+		case IDENT:
+		case TYPE:
+		case INTEGER:
+		case REAL:
+		case NUM:
+		case FUNCTION_LIST:
+		case FUNCTION_HEADER:
+		case PARAMETER_LIST:
+		case PARAMETER:
+		case STATEMENT_LIST:
+		case FUNCTION_CALL:
+		case EXPRESSION_LIST:
+		case IF_STATEMENT:
+		case RELOP:
+		case THEN:
+		case ELSE:
+		case COMPOUND_STATEMENT:
+		case ELSEIF_LIST:
+		case MULOP:
+		case UNARY_SIGN:
+		case FLOAT:
+		case PROCEDURE_CALL:
+		case SIGN:
+		case NOT:
+		case ARRAY:
+			break;
+
+		default:
+			fprintf(stderr, "Unfinished semantic check rule found: %d\n", t->type);
+			print_tree(t, 0);
+			exit(1);
+
 
 	}
 
@@ -371,11 +474,14 @@ void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent) {
 	switch(left->type) {
 		case IDENT:
 			break;
+		case ARRAY_ACCESS:
+			left = CHILD(left, 0);
+			break;
 
 		default:
-			fprintf(stderr, "Erroring");
 			semantic_error("Only identifiers are allowed to the left of an assignment.");
 	}
+
 
 	elem* e = table_lookup(left, parent);
 
@@ -393,8 +499,8 @@ void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent) {
 		}
 
 		glob_type = e->type->type;
-		fprintf(stderr, "\t->type: ");
-		print_tree(e->type, 0);
+		//fprintf(stderr, "\t->type: ");
+		//print_tree(e->type, 0);
 
 	} else if(e->retval == PROCEDURE) {
 		char* err;
@@ -402,15 +508,19 @@ void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent) {
 		semantic_error(err);
 		
 	} else {
-		glob_type = e->type->type;
-		fprintf(stderr, "\t->type: ");
-		print_tree(e->type, 0);
+		if(e->type->type == ARRAY) {
+			glob_type = get_array_type(e->type);
+		} else {
+			glob_type = e->type->type;
+		}
+		//fprintf(stderr, "\t->type: ");
+		//print_tree(e->type, 0);
 
 	}
 
 
 
-	eval_expr(right, glob_type, parent);
+	eval_expr(right, glob_type, parent, NULL);
 	return;
 
 }
@@ -438,7 +548,7 @@ elem* table_lookup(tree_t* left, scope* table) {
 
 				if(strlen(((elem*)ptr->data)->name) == strlen(left->attribute.name) && !strcmp(((elem*)ptr->data)->name, left->attribute.name)) {
 					e = (elem*)ptr->data;
-					fprintf(stderr, "\t->Table lookup success! ID: %s\n", e->name);
+					//fprintf(stderr, "\t->Table lookup success! ID: %s\n", e->name);
 					/*
 				} else {
 					fprintf(stderr, "'%s' != '%s'", ((elem*)ptr->data)->name, left->attribute.name);
@@ -459,7 +569,7 @@ elem* table_lookup(tree_t* left, scope* table) {
 }
 
 
-int eval_expr(tree_t* right, int type, scope* table) {
+int eval_expr(tree_t* right, int type, scope* table, int* secondary_type) {
 
 	int i;
 	int max;
@@ -467,19 +577,35 @@ int eval_expr(tree_t* right, int type, scope* table) {
 	elem* e;
 	char* buf;
 	char* op;
+	int artype;
 
 	switch(right->type) {
 		case SIGN:
+			/*
 			if(type == BOOLEAN) {
 				semantic_error("Addition/subtraction found in boolean expression.");
 			}
+			*/
 			break;
 
 		case NUM:
 			if(type == REAL) {
 				asprintf(&buf, "Integer found in float expression: %d", right->attribute.ival);
 				semantic_error(buf);
+
+			} else if(type == BOOLEAN) {
+				if(secondary_type != NULL) {
+					if(*secondary_type == REAL) {
+						asprintf(&buf, "Integer found in boolean(float) expression: %d", right->attribute.ival);
+						semantic_error(buf);
+					}
+				} else {
+					secondary_type = (int*) malloc(sizeof(int));
+					*secondary_type = INTEGER;
+				}
 			}
+
+
 			break;
 
 		case FLOAT:
@@ -488,9 +614,15 @@ int eval_expr(tree_t* right, int type, scope* table) {
 				semantic_error(buf);
 
 			} else if(type == BOOLEAN) {
-
-				asprintf(&buf, "Float found in boolean expression: %f", right->attribute.fval);
-				semantic_error(buf);
+				if(secondary_type != NULL){
+					if(*secondary_type == INTEGER) {
+						asprintf(&buf, "Float found in boolean(INTEGER) expression: %f", right->attribute.fval);
+						semantic_error(buf);
+					}
+				} else {
+					secondary_type = (int*) malloc(sizeof(int));
+					*secondary_type = FLOAT;
+				}
 
 			}
 			break;
@@ -509,18 +641,32 @@ int eval_expr(tree_t* right, int type, scope* table) {
 			break;
 
 		case UNARY_SIGN:
+			/*
 			if(type == BOOLEAN) {
 				asprintf(&buf, "Unary sign operator found in boolean expression: %s", right->attribute.name);
 				semantic_error(buf);
-			}
+			} */
 			break;
 
 		case FUNCTION_CALL:
-			print_tree(right, 0);
+			//print_tree(right, 0);
 			e = table_lookup(CHILD(right, 0), table);
-			if(e->type->type != type) {
+
+			if(e->type->type != type && type != BOOLEAN) {
 				asprintf(&buf, "Invalid function return type in expression: %s", e->name);
 				semantic_error(buf);
+
+			} else if(type == BOOLEAN) {
+				if(secondary_type != NULL){
+					if(*secondary_type != e->type->type) {
+						asprintf(&buf, "Invalid function return type in boolean expression: %s", e->name);
+						semantic_error(buf);
+					}
+				} else {
+					secondary_type = (int*) malloc(sizeof(int));
+					*secondary_type = e->type->type;
+				}
+
 			}
 			return ret;
 			break;
@@ -528,9 +674,21 @@ int eval_expr(tree_t* right, int type, scope* table) {
 		case IDENT:
 
 			e = table_lookup(right, table);
-			if(e->type->type != type) {
+			if(e->type->type != type && type != BOOLEAN) {
 				asprintf(&buf, "Invalid variable type in expression: %s", e->name);
 				semantic_error(buf);
+
+			} else if(type == BOOLEAN) {
+				if(secondary_type != NULL){
+					if(*secondary_type != e->type->type) {
+						asprintf(&buf, "Invalid variable type in boolean expression: %s", e->name);
+						semantic_error(buf);
+					}
+				} else {
+					secondary_type = (int*) malloc(sizeof(int));
+					*secondary_type = e->type->type;
+				}
+
 			}
 			break;
 
@@ -538,18 +696,28 @@ int eval_expr(tree_t* right, int type, scope* table) {
 
 			op = strdup(right->attribute.name);
 			if(my_strcmp(op, "*") || my_strcmp(op, "/")) {
+				/*
 				if(type == BOOLEAN) {
 					asprintf(&buf, "Multiplication operator found in boolean expression: %s", op);
 					semantic_error(buf);
 
-				}
+				} */
 			} else if(my_strcmp(op, "div") || my_strcmp(op, "div")) {
 				if(type == REAL) {
 					asprintf(&buf, "Integer division operator found in float expression: %s", op);
 					semantic_error(buf);
 				} else if(type == BOOLEAN) {
-					asprintf(&buf, "Integer division operator found in boolean expression: %s", op);
-					semantic_error(buf);
+					if(secondary_type != NULL) {
+						if(*secondary_type == REAL) {
+							asprintf(&buf, "Integer division operator found in boolean(float) expression: %s", op);
+							semantic_error(buf);
+						}
+
+					} else {
+						secondary_type = (int*) malloc(sizeof(int));
+						*secondary_type = INTEGER;
+					}
+
 				}
 
 			} else if(my_strcmp(op, "and")) {
@@ -566,7 +734,40 @@ int eval_expr(tree_t* right, int type, scope* table) {
 
 			break;
 
+		case NOT:
+			if(type == REAL) {
+				asprintf(&buf, "Logical not operator found in float expression.");
+				semantic_error(buf);
+			} else if(type == INTEGER) {
+				asprintf(&buf, "Logical not operator found in INTEGER expression.");
+				semantic_error(buf);
+			}
 
+			break;
+
+		case ARRAY_ACCESS:
+
+			e = table_lookup(CHILD(right, 0), table);
+			artype = get_array_type(e->type);
+			//fprintf(stderr, "Checking array of type: %d agains env %d", artype, type);
+			if(artype != type && type != BOOLEAN) {
+				asprintf(&buf, "Invalid array type in expression: %s", e->name);
+				semantic_error(buf);
+
+			} else if(type == BOOLEAN) {
+				if(secondary_type != NULL){
+					if(*secondary_type != artype) {
+						asprintf(&buf, "Invalid array type in boolean expression: %s", e->name);
+						semantic_error(buf);
+					}
+				} else {
+					secondary_type = (int*) malloc(sizeof(int));
+					*secondary_type = artype;
+				}
+
+			}
+			return ret;
+			break;
 
 		default:
 			fprintf(stderr, "Unfinished expression check rule found: %d\n", right->type);
@@ -576,7 +777,7 @@ int eval_expr(tree_t* right, int type, scope* table) {
 
 	max = vector_count(right->children);
 	for(i = 0; i < max; i++) {
-		ret += eval_expr(CHILD(right, i), type, table);
+		ret += eval_expr(CHILD(right, i), type, table, NULL);
 	}
 	return ret;
 

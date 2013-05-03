@@ -42,7 +42,7 @@ int get_ident_type(tree_t* t);
 void pad_spaces(int pad, FILE* stream);
 
 void semantic_check(tree_t* t, scope* parent);
-int eval_expr(tree_t* right, int type, scope* table);
+int eval_expr(tree_t* right, int type, scope* table, int* secondary_type);
 elem* table_lookup(tree_t* left, scope* table);
 void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent);
 #endif

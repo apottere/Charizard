@@ -46,11 +46,11 @@ void print_tree( tree_t *t, int spaces )
 	switch (t->type) {
 
 	case SIGN:
-		fprintf( stderr, "[OP %c]", '+');
+		fprintf( stderr, "[OP %s]", t->attribute.name);
 		break;
 
 	case UNARY_SIGN:
-		fprintf( stderr, "[SIGN %c]", '+');
+		fprintf( stderr, "[SIGN %s]", t->attribute.name);
 		break;
 
 	case MULOP:
@@ -71,6 +71,10 @@ void print_tree( tree_t *t, int spaces )
 
 	case INTEGER:
 		fprintf( stderr, "[INTEGER]" );
+		break;
+
+	case ARRAY_ACCESS:
+		fprintf( stderr, "[ARRAY ACCESS]" );
 		break;
 
 	case ARRAY_RANGE:
@@ -163,10 +167,6 @@ void print_tree( tree_t *t, int spaces )
 
 	case ARRAY:
 		fprintf( stderr, "[ARRAY]" );
-		break;
-
-	case ARRAY_TYPE:
-		fprintf( stderr, "[ARRAY TYPE]" );
 		break;
 
 	case PROGRAM:
