@@ -20,7 +20,7 @@ tree_t;
 
 
 tree_t *make_tree( int type, vector* children );
-void	print_tree( tree_t *t, int spaces );
+void print_tree( tree_t *t, int spaces );
 
 #endif
 

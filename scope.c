@@ -143,16 +143,25 @@ void print_elem(gpointer data, gpointer user_data) {
 	int artype;
 	switch (edata->type->type) {
 		case INTEGER:
-			stype = "INTEGER       ";
+			stype = "INTEGER        ";
 			break;
 
 		case REAL:
-			stype = "REAL          ";
+			stype = "REAL           ";
 			break;
 
 		case ARRAY:
 			artype = get_array_type(edata->type);
-			stype = artype == INTEGER ? "ARRAY[INTEGER]" : (artype == REAL ? "ARRAY[REAL]   " : "ERROR         ");
+
+			if(artype == INTEGER) {
+				asprintf(&stype, "ARRAY[%d]INTEGER", edata->type->attribute.ival);
+
+			} else if (artype == REAL) {
+
+				asprintf(&stype, "ARRAY[%d]REAL   ", edata->type->attribute.ival);
+			} else {
+				stype = "ERROR         ";
+			}
 			break;
 	}
 
@@ -183,7 +192,7 @@ void print_elem(gpointer data, gpointer user_data) {
 	fprintf(stderr, "%s", edata->name);
 	int namepad = 42 - strlen(edata->name);
 	pad_spaces(namepad, stderr);
-	fprintf(stderr, "| %s    | %s    |\n", stype, rtype);
+	fprintf(stderr, "| %s    | %s   |\n", stype, rtype);
 	//fprintf(stderr, "| %s\t\t\t| %s\t\t\t| %s\t\t\t|\n", edata->name, stype, rtype);
 
 }
@@ -206,12 +215,16 @@ int get_array_type(tree_t* t) {
 	if(t->type == ARRAY) {
 		tree_t* temp;
 		temp = t;
+		int num = 0;
 		while(temp->type == ARRAY) {
 //			fprintf(stderr, "\nFound an array, looping the type...\n");
 //			print_tree(temp, 0);
 			temp = (tree_t*)vector_get( ((tree_t*)(vector_get(temp->children, 1)))->children, 0 );
+			num++;
 		}
 		retval = temp->type;
+
+		t->attribute.ival = num;
 
 	}
 
@@ -228,7 +241,7 @@ void print_scope(scope* scope, char* name) {
 	fprintf(stderr, "| TABLE: %s", name);
 	int namepad = 35 - strlen(name);
 	pad_spaces(namepad, stderr);
-	fprintf(stderr, "| RETURN            | TYPE           |\n");
+	fprintf(stderr, "| RETURN             | TYPE          |\n");
 
 	int i;
 	for(i = 0; i < HASH_TABLE_SIZE; i++) {
@@ -316,3 +329,61 @@ init_scoping(tree_t* t, scope* parent) {
 		init_scoping((tree_t*)vector_get(t->children, i), new_parent == NULL? parent : new_parent);
 	}
 }
+
+
+// BEGIN SEMANTIC CHECKING (cause i hate makefiles)
+
+
+void semantic_check(tree_t* t, scope* parent) {
+
+	scope* new_parent = NULL;
+	int i;
+	int max;
+
+	switch(t->type) {
+
+		case FUNCTION:
+			new_parent = t->attribute.scope;
+			break;
+
+		case ASSIGNOP:
+			fprintf(stderr, "ASSIGNOP: \n");
+			recursive_assignment_check(CHILD(t, 0), CHILD(t,1));
+
+
+	}
+
+	max = vector_count(t->children);
+	for(i = 0; i < max; i++) {
+		init_scoping(CHILD(t, i), new_parent == NULL? parent : new_parent);
+	}
+}
+
+
+
+void recursive_assignment_check(tree_t* left, tree_t* right) {
+
+	int glob_type = NULL;
+
+	tree_t* type = table_lookup(left, &glob_type);
+
+	eval_expr(right, &glob_type);
+
+}
+
+
+tree_t* table_lookup(tree_t* left, int* type) {
+
+
+}
+
+
+int eval_expr(tree_t* right, int* type) {
+
+
+}
+
+
+
+
+

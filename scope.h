@@ -33,9 +33,15 @@ void semantic_error(char *str);
 void assert_new(gpointer data, gpointer user_data);
 gint compare(gconstpointer a, gconstpointer b);
 elem* find_ident(const char* str, scope* table);
+
 void print_scope(scope* scope, char* name);
 void print_list(GSList* list);
 void print_elem(gpointer data, gpointer user_data);
 int get_ident_type(tree_t* t);
 void pad_spaces(int pad, FILE* stream);
+
+void semantic_check(tree_t* t, scope* parent);
+int eval_expr(tree_t* right, int* type);
+tree_t* table_lookup(tree_t* left, int* type);
+void recursive_assignment_check(tree_t* left, tree_t* right);
 #endif
