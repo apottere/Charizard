@@ -368,11 +368,21 @@ void semantic_check(tree_t* t, scope* parent) {
 	scope* new_parent = NULL;
 	int* second = NULL;
 	int i;
+	int j;
+	int k;
+	int l;
 	int max;
 	char* buf;
 	tree_t* n;
 	tree_t* m;
+	tree_t* c;
 	elem* e;
+	vector* v;
+	vector* w;
+	int v_type;
+	int w_type;
+	int count;
+	int type_t2;
 	//fprintf(stderr, "Checking tree: \n");
 	//print_tree(t, 0);
 
@@ -451,6 +461,124 @@ void semantic_check(tree_t* t, scope* parent) {
 
 		case FUNCTION_CALL:
 		case PROCEDURE_CALL:
+			
+			e = table_lookup(CHILD(t, 0), parent);
+			if(e == NULL) {
+				asprintf(&buf, "No table entry for function %s... this is bad.", CHILD(t, 0)->attribute.name);
+				semantic_error(buf);
+			}
+			n = e->scope_base;
+//			fprintf(stderr, "Exploring function call: %s\n", CHILD(t, 0)->attribute.name);
+
+			m = CHILD( CHILD( n, 0 ), 1 );
+			n = CHILD( t, 1 );
+
+//			print_tree(m, 0);
+//			print_tree(n, 0);
+
+			//v = vector_malloc();
+			w = n->children;
+
+			count = 0;
+			k = vector_count(m->children);
+//			fprintf(stderr, "Looping %d times.\n", k);
+			for(i = 0; i < k; i++) {
+//				fprintf(stderr, "loop\n");
+				v = CHILD(CHILD(m, i), 0)->children;
+				v_type = CHILD(CHILD(CHILD(m, i), 1), 0)->type;
+
+
+				l = vector_count(v);
+				for(j = 0; j < l; j++) {
+					if(vector_count(w) == count) {
+						asprintf(&buf, "Too few arguments for function %s.", CHILD(t, 0)->attribute.name);
+						semantic_error(buf);
+					}
+					c = (tree_t*) vector_get(w, count);
+					if(c->type == ARRAY_ACCESS) {
+						c = CHILD(c, 0);
+					}
+					e = table_lookup(c, parent);
+					if(e == NULL) {
+						asprintf(&buf, "No table entry for function %s... this is bad.", c->attribute.name);
+						semantic_error(buf);
+					}
+					if(e->type->type == ARRAY) {
+						type_t2 = get_array_type(e->type);
+					} else {
+						type_t2 = e->type->type;
+					}
+					if(!(type_t2 == v_type)) {
+						asprintf(&buf, "Type mismatch with argument %d to function %s.", count + 1, CHILD(t, 0)->attribute.name);
+						semantic_error(buf);
+					}
+					count++;
+				}
+			}
+			if(vector_count(w) > count) {
+				asprintf(&buf, "Too many arguments for function %s.", CHILD(t, 0)->attribute.name);
+				semantic_error(buf);
+
+			}
+//			fprintf(stderr, "Done.\n");
+			/*
+			if(((tree_t*)vector_get(w, count)) != NULL) {
+						asprintf(&buf, "Too many arguments to function %s.", c->attribute.name);
+						semantic_error(buf);
+			for(i = 0; i < vector_count(CHILD(m, 0)->children); i++) {
+				w = CHILD(m, i)->children;
+				for(j = 0; j < vector_count(w); j++) {
+					vector_add(v, vector_get(w, j));
+				}
+				i++;
+			}
+			fprintf(stderr, "Found %d arguments to function %s.\n", vector_count(v), CHILD(t, 0)->attribute.name);
+			w = n->children;
+			if(vector_count(w) < vector_count(v)) {
+				asprintf(&buf, "Too few arguments to function %s.", c->attribute.name);
+				semantic_error(buf);
+			}
+
+			if(vector_count(v) < vector_count(w)) {
+				asprintf(&buf, "Too many arguments to function %s.", c->attribute.name);
+				semantic_error(buf);
+			}
+			
+			for(i = 0; i < vector_count(v); i++) {
+
+			}
+			*/
+
+			/*
+			while(CHILD(m, i) != NULL) {
+				v = CHILD(CHILD(m, i), 0)->children;
+				v_type = CHILD(CHILD(m, i), 1)->type;
+
+
+				for(j = 0; j < vector_count(v); j++) {
+					c = (tree_t*)vector_get(w, count);
+					fprintf(stderr, "Ident: %s, type: %s", c->attribute.name, v_type);
+					if(c == NULL) {
+					}
+					e = table_lookup(c, parent);
+					if(e == NULL) {
+						asprintf(&buf, "No table entry for function %s... this is bad.", c->attribute.name);
+						semantic_error(buf);
+					}
+					if(!e->type->type == v_type) {
+						asprintf(&buf, "Type mismatch with argument %d to function %s.", count + 1, c->attribute.name);
+						semantic_error(buf);
+					}
+					count++;
+				}
+			}
+			if(((tree_t*)vector_get(w, count)) != NULL) {
+						asprintf(&buf, "Too many arguments to function %s.", c->attribute.name);
+						semantic_error(buf);
+			} */
+
+
+			break;
 
 		//TODO: temp list to help me think.
 		case PROGRAM:
