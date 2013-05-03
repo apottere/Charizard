@@ -410,8 +410,8 @@ void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent) {
 
 
 
+	eval_expr(right, glob_type, parent);
 	return;
-//	eval_expr(right, &glob_type);
 
 }
 
@@ -459,8 +459,126 @@ elem* table_lookup(tree_t* left, scope* table) {
 }
 
 
-int eval_expr(tree_t* right, int* type) {
+int eval_expr(tree_t* right, int type, scope* table) {
 
+	int i;
+	int max;
+	int ret = 0;
+	elem* e;
+	char* buf;
+	char* op;
+
+	switch(right->type) {
+		case SIGN:
+			if(type == BOOLEAN) {
+				semantic_error("Addition/subtraction found in boolean expression.");
+			}
+			break;
+
+		case NUM:
+			if(type == REAL) {
+				asprintf(&buf, "Integer found in float expression: %d", right->attribute.ival);
+				semantic_error(buf);
+			}
+			break;
+
+		case FLOAT:
+			if(type == INTEGER) {
+				asprintf(&buf, "Float found in integer expression: %f", right->attribute.fval);
+				semantic_error(buf);
+
+			} else if(type == BOOLEAN) {
+
+				asprintf(&buf, "Float found in boolean expression: %f", right->attribute.fval);
+				semantic_error(buf);
+
+			}
+			break;
+
+		case RELOP:
+			if(type == INTEGER) {
+
+				asprintf(&buf, "Relational operator found in integer expression: %s", right->attribute.name);
+				semantic_error(buf);
+
+			} else if(type == REAL) {
+
+				asprintf(&buf, "Relational operator found in float expression: %s", right->attribute.name);
+				semantic_error(buf);
+			}
+			break;
+
+		case UNARY_SIGN:
+			if(type == BOOLEAN) {
+				asprintf(&buf, "Unary sign operator found in boolean expression: %s", right->attribute.name);
+				semantic_error(buf);
+			}
+			break;
+
+		case FUNCTION_CALL:
+			print_tree(right, 0);
+			e = table_lookup(CHILD(right, 0), table);
+			if(e->type->type != type) {
+				asprintf(&buf, "Invalid function return type in expression: %s", e->name);
+				semantic_error(buf);
+			}
+			return ret;
+			break;
+
+		case IDENT:
+
+			e = table_lookup(right, table);
+			if(e->type->type != type) {
+				asprintf(&buf, "Invalid variable type in expression: %s", e->name);
+				semantic_error(buf);
+			}
+			break;
+
+		case MULOP:
+
+			op = strdup(right->attribute.name);
+			if(my_strcmp(op, "*") || my_strcmp(op, "/")) {
+				if(type == BOOLEAN) {
+					asprintf(&buf, "Multiplication operator found in boolean expression: %s", op);
+					semantic_error(buf);
+
+				}
+			} else if(my_strcmp(op, "div") || my_strcmp(op, "div")) {
+				if(type == REAL) {
+					asprintf(&buf, "Integer division operator found in float expression: %s", op);
+					semantic_error(buf);
+				} else if(type == BOOLEAN) {
+					asprintf(&buf, "Integer division operator found in boolean expression: %s", op);
+					semantic_error(buf);
+				}
+
+			} else if(my_strcmp(op, "and")) {
+
+				if(type == REAL) {
+					asprintf(&buf, "Logical and operator found in real expression.");
+					semantic_error(buf);
+				} else if(type == INTEGER) {
+					asprintf(&buf, "Logical and operator found in integer expression.");
+					semantic_error(buf);
+				}
+
+			}
+
+			break;
+
+
+
+		default:
+			fprintf(stderr, "Unfinished expression check rule found: %d\n", right->type);
+			print_tree(right, 0);
+			exit(1);
+	}
+
+	max = vector_count(right->children);
+	for(i = 0; i < max; i++) {
+		ret += eval_expr(CHILD(right, i), type, table);
+	}
+	return ret;
 
 }
 
