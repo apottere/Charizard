@@ -23,6 +23,7 @@ typedef struct scope_e {
 	tree_t* type;
 	int retval;
 	tree_t* scope_base;
+
 }
 elem;
 
@@ -45,4 +46,7 @@ void semantic_check(tree_t* t, scope* parent);
 int eval_expr(tree_t* right, int type, scope* table, int* secondary_type);
 elem* table_lookup(tree_t* left, scope* table);
 void recursive_assignment_check(tree_t* left, tree_t* right, scope* parent);
+
+void check_function_return_statement(tree_t* t, scope* parent);
+void check_function_return_statement_helper(tree_t* t, scope* parent, int* code, tree_t* target);
 #endif

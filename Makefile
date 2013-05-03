@@ -7,7 +7,7 @@ all: lexical syntax
 	gcc lex.yy.c y.tab.c scope.c tree.c vector.c $(PKGCONFIG) -g -o Charizard $(CFLAGS) $(LFLAGS)
 
 lexical:
-	lex $(DEBUG) lexical.l
+	lex lexical.l
 
 syntax:
 	yacc $(DEBUG) -v syntax.y

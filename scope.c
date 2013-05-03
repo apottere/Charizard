@@ -45,7 +45,7 @@ void hash_insert(tree_t* t, tree_t* type_t, int rettype, scope* table, tree_t* s
 	new->type = type_t;
 	new->retval = rettype;
 	new->scope_base = scope_base;
-	//fprintf(stderr, "Adding '%s' to table: \n", new->name);
+//	fprintf(stderr, "Adding '%s' to table: \n", new->name);
 	//print_tree(new->type, 0);
 
 	if(table->map[hash] == NULL) {
@@ -150,6 +150,14 @@ void print_elem(gpointer data, gpointer user_data) {
 			stype = "REAL            ";
 			break;
 
+		case NONE:
+			stype = "NONE            ";
+			break;
+
+		case INPUT:
+			stype = "INPUT           ";
+			break;
+
 		case ARRAY:
 			artype = get_array_type(edata->type);
 
@@ -181,6 +189,10 @@ void print_elem(gpointer data, gpointer user_data) {
 
 		case DECLARATION:
 			rtype = "DECLARATION";
+			break;
+
+		case INPUT:
+			rtype = "INPUT      ";
 			break;
 
 		default:
@@ -265,7 +277,6 @@ void print_scope(scope* scope, char* name) {
 			g_slist_find_custom(scope->map[i], searches, (GCompareFunc) comp);
 		}
 	}
-
 }
 
 init_scoping(tree_t* t, scope* parent) {
@@ -275,7 +286,10 @@ init_scoping(tree_t* t, scope* parent) {
 	int max;
 	int ename;
 	tree_t* type;
+	tree_t* idl;
 	vector*  children;
+//	fprintf(stderr, "Looping through %d\n", t->type);
+//	print_tree(t, 0);
 
 	switch(t->type) {
 
@@ -285,6 +299,12 @@ init_scoping(tree_t* t, scope* parent) {
 			t->attribute.scope->parent = NULL;
 			t->attribute.scope->scope_id = "PROGRAM";
 			hash_init(t->attribute.scope);
+			
+			idl = CHILD(t, 0);
+			max = vector_count(idl->children);
+			for(i = 0; i < max; i++) {
+				hash_insert(CHILD(idl, i), make_tree(INPUT, NULL), INPUT, t->attribute.scope, NULL);
+			}
 
 			new_parent = t->attribute.scope;
 			break;
@@ -305,8 +325,13 @@ init_scoping(tree_t* t, scope* parent) {
 			}
 			break;
 
-//		case PROCEDURE:
+		case PROCEDURE:
 		case FUNCTION:
+			
+			ename = (t->type == PROCEDURE)? PROCEDURE : FUNCTION;
+
+//			fprintf(stderr, "Init scoping for FUNC/PROC\n");
+//			print_tree(t, 0);
 			t->attribute.scope = (scope*) malloc(sizeof(scope));
 			t->attribute.scope->depth = parent->depth + 1;
 			t->attribute.scope->parent = parent;
@@ -316,9 +341,9 @@ init_scoping(tree_t* t, scope* parent) {
 
 			new_parent = t->attribute.scope;
 
-			//fprintf(stderr, "Function '%s' of type:\n", CHILD( CHILD(t, 0), 0)->attribute.name);
+//			fprintf(stderr, "Function '%s' of type:\n", CHILD( CHILD(t, 0), 0)->attribute.name);
 			//print_tree(t, 0);
-			hash_insert( CHILD( CHILD(t, 0), 0), CHILD( CHILD( CHILD(t, 0), 2), 0), FUNCTION, parent , t);
+			hash_insert( CHILD( CHILD(t, 0), 0), (ename == FUNCTION) ? CHILD( CHILD( CHILD(t, 0), 2), 0) : make_tree(NONE, NULL), ename, parent , t);
 
 			break;
 	} 
@@ -353,7 +378,13 @@ void semantic_check(tree_t* t, scope* parent) {
 
 	switch(t->type) {
 
+		case PROCEDURE:
+			break;
+
 		case FUNCTION:
+
+			check_function_return_statement(t, t->attribute.scope);
+
 			new_parent = t->attribute.scope;
 			break;
 
@@ -418,6 +449,8 @@ void semantic_check(tree_t* t, scope* parent) {
 			eval_expr(CHILD(t, 1), INTEGER, parent, NULL);
 			break;
 
+		case FUNCTION_CALL:
+		case PROCEDURE_CALL:
 
 		//TODO: temp list to help me think.
 		case PROGRAM:
@@ -434,7 +467,6 @@ void semantic_check(tree_t* t, scope* parent) {
 		case PARAMETER_LIST:
 		case PARAMETER:
 		case STATEMENT_LIST:
-		case FUNCTION_CALL:
 		case EXPRESSION_LIST:
 		case IF_STATEMENT:
 		case RELOP:
@@ -445,10 +477,10 @@ void semantic_check(tree_t* t, scope* parent) {
 		case MULOP:
 		case UNARY_SIGN:
 		case FLOAT:
-		case PROCEDURE_CALL:
 		case SIGN:
 		case NOT:
 		case ARRAY:
+		case PROCEDURE_HEADER:
 			break;
 
 		default:
@@ -652,6 +684,11 @@ int eval_expr(tree_t* right, int type, scope* table, int* secondary_type) {
 			//print_tree(right, 0);
 			e = table_lookup(CHILD(right, 0), table);
 
+			if(e->type->type == NONE) {
+				asprintf(&buf, "Invalid procedure usage in expression: %s", e->name);
+				semantic_error(buf);
+			}
+
 			if(e->type->type != type && type != BOOLEAN) {
 				asprintf(&buf, "Invalid function return type in expression: %s", e->name);
 				semantic_error(buf);
@@ -784,6 +821,45 @@ int eval_expr(tree_t* right, int type, scope* table, int* secondary_type) {
 }
 
 
+void check_function_return_statement(tree_t* t, scope* parent) {
 
+	tree_t* id = CHILD( CHILD(t, 0), 0);
+	int ret = 0;
+	char* buf;
+	scope* backup = parent->parent;
+	parent->parent = NULL;
 
+	check_function_return_statement_helper(CHILD(t, vector_count(t->children) - 1), parent, &ret, id);
+	if(!ret) {
+		asprintf(&buf, "Function does not return: %s", id->attribute.name);
+		semantic_error(buf);
+	}
+	parent->parent = backup;
+}
+
+void check_function_return_statement_helper(tree_t* t, scope* parent, int* code, tree_t* target) {
+
+	int i, max;
+	char* buf;
+	
+	if(t->type == ASSIGNOP) {
+		if(CHILD(t, 0)->type == IDENT) {
+			if(my_strcmp(target->attribute.name, CHILD(t, 0)->attribute.name)) {
+				*code = 1;
+			} else {
+				elem* e = table_lookup(CHILD(t, 0), parent);
+				if(e == NULL) {
+					asprintf(&buf, "Function %s alters variable out of scope: %s", target->attribute.name, CHILD(t, 0)->attribute.name);
+					semantic_error(buf);
+				}
+			} 
+		}
+	}
+
+	
+	max = vector_count(t->children);
+	for(i = 0; i < max; i++) {
+		check_function_return_statement_helper(CHILD(t, i), parent, code, target);
+	}
+}
 

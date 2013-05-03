@@ -73,6 +73,10 @@ void print_tree( tree_t *t, int spaces )
 		fprintf( stderr, "[INTEGER]" );
 		break;
 
+	case PROCEDURE:
+		fprintf( stderr, "[PROCEDURE]" );
+		break;
+
 	case ARRAY_ACCESS:
 		fprintf( stderr, "[ARRAY ACCESS]" );
 		break;

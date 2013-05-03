@@ -43,7 +43,7 @@ main()
 %token PROGRAM FUNCTION ARRAY OF VAR PROCEDURE
 
 // Too lazy to make my own enumeration!
-%token RESERVED STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT ARRAY_RANGE NONE BOOLEAN
+%token STATEMENT_LIST FUNCTION_CALL EXPRESSION_LIST UNARY_SIGN DECLARATION DECLARATION_LIST IDENTIFIER_LIST FUNCTION_LIST TYPE PARAMETER PARAMETER_LIST FUNCTION_HEADER PROCEDURE_HEADER PROCEDURE_CALL COMPOUND_STATEMENT FOR TO IF_STATEMENT ARRAY_RANGE NONE BOOLEAN INPUT RESERVED
 
 %%
 
@@ -52,9 +52,10 @@ program:
 	   {
 	   	//fprintf(stderr, "Program found:\n");
 		vector* children = vector_malloc();
-		vector_add(children, $7);
-		vector_add(children, $8);
-		vector_add(children, $9);
+		vector_add(children, $4);
+		if( $7 != NULL) { vector_add(children, $7); }
+		if( $8 != NULL) { vector_add(children, $8); }
+		if( $9 != NULL) { vector_add(children, $9); }
 		tree_t* final = make_tree(PROGRAM, children);
 		print_tree(final, 0);
 		init_scoping(final, NULL);
@@ -192,10 +193,10 @@ subprogram_declaration:
 					  {
 						vector* children = vector_malloc();
 						vector_add(children, $1);
-						vector_add(children, $2);
-						if($3 != NULL) { vector_add(children, $3); }
-						vector_add(children, $4);
-						$$ = make_tree(FUNCTION, children);
+						if( $2 != NULL) { vector_add(children, $2); }
+						if( $3 != NULL) { vector_add(children, $3); }
+						if( $4 != NULL) { vector_add(children, $4); }
+						$$ = make_tree(($1->type == FUNCTION_HEADER) ? FUNCTION : PROCEDURE, children);
 					  	
 					  }
 					  ;
@@ -311,7 +312,7 @@ statement:
 		 {
 		 	
 			vector* children = vector_malloc();
-			vector_add(children, $1);
+			if( $1 != NULL) { vector_add(children, $1); }
 			$$ = make_tree(COMPOUND_STATEMENT, children);
 		 }
 		 |
