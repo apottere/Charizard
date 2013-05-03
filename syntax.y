@@ -58,7 +58,7 @@ program:
 		tree_t* final = make_tree(PROGRAM, children);
 		print_tree(final, 0);
 		init_scoping(final, NULL);
-		print_scope(final->attribute.scope, 0);
+		print_scope(final->attribute.scope, "PROGRAM");
 
 		if(system("cowsay -f dragon I approve of your program.")) {
 			printf("Install cowsay, or reap the consequences!\n");
@@ -120,7 +120,9 @@ type:
 		vector* children = vector_malloc();
 		vector_add(children, $3);
 		vector_add(children, $6);
-		$$ = make_tree(ARRAY, children);
+		vector* children2 = vector_malloc();
+		vector_add(children2, make_tree(ARRAY, children));
+		$$ = make_tree(TYPE, children2);
 	}
 	;
 

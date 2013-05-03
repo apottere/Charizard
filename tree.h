@@ -4,6 +4,7 @@
 #include "vector.h"
 #include "scope.h"
 
+#define CHILD(y, x) ((tree_t*)vector_get(y->children, x))
 
 typedef struct tree_s {
 	int type;

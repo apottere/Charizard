@@ -19,21 +19,23 @@ scope;
 
 typedef struct scope_e {
 	char* name;
-	int type;
+	tree_t* type;
 	int retval;
+	tree_t* scope_base;
 }
 elem;
 
 
 void hash_init();
 unsigned int hash_pjw (const void *x, unsigned int tablesize);
-void hash_insert(tree_t* t, tree_t* type, int rettype, scope* table);
+void hash_insert(tree_t* t, tree_t* type, int rettype, scope* table, tree_t* scope_base);
 void semantic_error(char *str);
 void assert_new(gpointer data, gpointer user_data);
 gint compare(gconstpointer a, gconstpointer b);
 elem* find_ident(const char* str, scope* table);
-void print_scope(scope* scope, int spaces);
-void print_list(GSList* list, int spaces);
+void print_scope(scope* scope, char* name);
+void print_list(GSList* list);
 void print_elem(gpointer data, gpointer user_data);
 int get_ident_type(tree_t* t);
+void pad_spaces(int pad, FILE* stream);
 #endif

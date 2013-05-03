@@ -73,6 +73,10 @@ void print_tree( tree_t *t, int spaces )
 		fprintf( stderr, "[INTEGER]" );
 		break;
 
+	case ARRAY_RANGE:
+		fprintf( stderr, "[ARRAY RANGE]" );
+		break;
+
 	case IF_STATEMENT:
 		fprintf( stderr, "[IF STATEMENT]" );
 		break;

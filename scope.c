@@ -34,17 +34,19 @@ void hash_init(scope* table) {
 
 }
 
-void hash_insert(tree_t* t, tree_t* type_t, int rettype, scope* table) {
+void hash_insert(tree_t* t, tree_t* type_t, int rettype, scope* table, tree_t* scope_base) {
 
 
 	char* str = strdup(t->attribute.name);
-	int type = get_ident_type(type_t);
 	int hash = hash_pjw(str, HASH_TABLE_SIZE);
 	elem* new = (elem*) malloc(sizeof(elem));
 
 	new->name = str;
-	new->type = type;
+	new->type = type_t;
 	new->retval = rettype;
+	new->scope_base = scope_base;
+	fprintf(stderr, "Adding '%s' to table: \n", new->name);
+	print_tree(new->type, 0);
 
 	if(table->map[hash] == NULL) {
 		table->map[hash] = g_slist_alloc();
@@ -87,6 +89,22 @@ gint compare(gconstpointer a, gconstpointer b) {
 
 }
 
+
+gint compare_and_print(gconstpointer a, gconstpointer b) {
+	
+	vector* children = (vector*) b;
+	elem* thing = (elem*) a;
+	int i;
+	int max = vector_count(children);
+	for(i = 0; i < max; i++) {
+		if(thing->retval == *((int*)vector_get(children, i))) {
+//			fprintf(stderr, "Found something named '%s', attempting to print its scope.\n", thing->name);
+//			print_tree(thing->scope_base, 0);
+			print_scope(thing->scope_base->attribute.scope, thing->name);
+		}
+	}
+}
+
 void assert_new(gpointer data, gpointer user_data) {
 	
 	if((strlen(((elem*)data)->name) == strlen((char*)user_data)) && (strcmp(((elem*)data)->name, (char*)user_data) == 0)) {
@@ -109,77 +127,127 @@ void semantic_error(char *str) {
 		exit(1);
 }
 
-void print_list(GSList* list, int spaces) {
+void print_list(GSList* list) {
 
 	void (*print)(gpointer, gpointer) = &print_elem;
-	g_slist_foreach(list, print, &spaces);
+	g_slist_foreach(list, print, 0);
 
 }
 
 void print_elem(gpointer data, gpointer user_data) {
 		
 	int i;
-	int* spaces = (int*) user_data;
 	elem* edata = (elem*) data;
-	for(i = 0; i < *spaces; i++) {
-		fprintf(stderr, " ");
-	}
+
 	char* stype;
-	switch (edata->type) {
+	int artype;
+	switch (edata->type->type) {
 		case INTEGER:
-			stype = "INTEGER";
+			stype = "INTEGER       ";
 			break;
 
 		case REAL:
-			stype = "REAL   ";
-			break;
-	}
-
-	fprintf(stderr, "| %s\t\t\t| %s\t\t\t| %d\t\t\t|\n", edata->name, stype, edata->type);
-
-}
-
-int get_ident_type(tree_t* t) {
-	int retval;
-	tree_t* temp;
-
-	switch(t->type) {
-
-		case INTEGER:
-			retval = INTEGER;
-			break;
-
-		case REAL:
-			retval = REAL;
+			stype = "REAL          ";
 			break;
 
 		case ARRAY:
-			temp = t;
-			while(temp->type == ARRAY) {
-				temp = (tree_t*)vector_get( ((tree_t*)(vector_get(temp->children, 0)))->children, 0 );
-			}
-			retval = temp->type;
+			artype = get_array_type(edata->type);
+			stype = artype == INTEGER ? "ARRAY[INTEGER]" : (artype == REAL ? "ARRAY[REAL]   " : "ERROR         ");
+			break;
+	}
+
+	char* rtype;
+	switch(edata->retval) {
+		case FUNCTION:
+			rtype = "FUNCTION   ";
+			break;
+
+		case PROCEDURE:
+			rtype = "PROCEDURE  ";
+			break;
+
+		case PARAMETER:
+			rtype = "PARAMETER  ";
+			break;
+
+		case DECLARATION:
+			rtype = "DECLARATION";
+			break;
+
+		default:
+			rtype = "ERROR      ";
 
 	}
+
+	fprintf(stderr, "| ");
+	fprintf(stderr, "%s", edata->name);
+	int namepad = 42 - strlen(edata->name);
+	pad_spaces(namepad, stderr);
+	fprintf(stderr, "| %s    | %s    |\n", stype, rtype);
+	//fprintf(stderr, "| %s\t\t\t| %s\t\t\t| %s\t\t\t|\n", edata->name, stype, rtype);
+
+}
+
+void pad_spaces(int pad, FILE* stream) {
+
+	int i;
+	for(i = 0; i < pad; i++) {
+
+		fprintf(stream, " ");
+	}
+
+}
+
+
+int get_array_type(tree_t* t) {
+
+	int retval = 0;
+
+	if(t->type == ARRAY) {
+		tree_t* temp;
+		temp = t;
+		while(temp->type == ARRAY) {
+//			fprintf(stderr, "\nFound an array, looping the type...\n");
+//			print_tree(temp, 0);
+			temp = (tree_t*)vector_get( ((tree_t*)(vector_get(temp->children, 1)))->children, 0 );
+		}
+		retval = temp->type;
+
+	}
+
 	return retval;
 
 }
 
 
 
-void print_scope(scope* scope, int spaces) {
+void print_scope(scope* scope, char* name) {
 
 //	fprintf(stderr, "Printing scope!\n");
-	fprintf(stderr, "\n_________________________________________________________________________________\n");
-	fprintf(stderr, "| IDENT\t\t\t| TYPE   \t\t\t| RETURN\t\t\t|\n");
-//	fprintf(stderr, "\n_________________________________________________________________________________\n");
+	fprintf(stderr, "\n ________________________________________________________________________________\n");
+	fprintf(stderr, "| TABLE: %s", name);
+	int namepad = 35 - strlen(name);
+	pad_spaces(namepad, stderr);
+	fprintf(stderr, "| RETURN            | TYPE           |\n");
 
 	int i;
 	for(i = 0; i < HASH_TABLE_SIZE; i++) {
 		if(scope->map[i] != NULL) {
 			//fprintf(stderr, "\t->found non-null list.\n");
-			print_list(scope->map[i], spaces);
-//			fprintf(stderr, "\n_________________________________________________________________________________\n");
+			print_list(scope->map[i]);
+		}
+	}
+
+	vector* searches = vector_malloc();
+	int thing = FUNCTION;
+	vector_add(searches, &thing);
+	int thing2 = PROCEDURE;
+	vector_add(searches, &thing2);
+
+	for(i = 0; i < HASH_TABLE_SIZE; i++) {
+		if(scope->map[i] != NULL) {
+			gint (*comp)(gconstpointer, gconstpointer) = &compare_and_print;
+			g_slist_find_custom(scope->map[i], searches, (GCompareFunc) comp);
 		}
 	}
 
@@ -190,6 +258,7 @@ init_scoping(tree_t* t, scope* parent) {
 	scope* new_parent = NULL;
 	int i;
 	int max;
+	int ename;
 	tree_t* type;
 	vector*  children;
 
@@ -204,18 +273,37 @@ init_scoping(tree_t* t, scope* parent) {
 			new_parent = t->attribute.scope;
 			break;
 
+		case PARAMETER:
 		case DECLARATION:
 			
+			ename = t->type == PARAMETER? PARAMETER : DECLARATION;
 			type = (tree_t*)vector_get(((tree_t*)vector_get(t->children, 1))->children, 0);
-//			type->type = 5;
 			children = ((tree_t*)vector_get(t->children, 0))->children;
 			max = vector_count(children);
 
 			for(i = 0; i < max; i++) {
-//				fprintf(stderr, "Inserting ID: '%s' of type %s");
-				hash_insert(((tree_t*)vector_get(children, i)), type, NONE, parent);
-			}
 
+				//fprintf(stderr, "Inserting ID: '%s' of type:\n", ((tree_t*)vector_get(children, i))->attribute.name);
+				//print_tree(type, 0);
+				hash_insert(((tree_t*)vector_get(children, i)), type, ename, parent, NULL);
+			}
+			break;
+
+//		case PROCEDURE:
+		case FUNCTION:
+			t->attribute.scope = (scope*) malloc(sizeof(scope));
+			t->attribute.scope->depth = 1;
+			t->attribute.scope->parent = parent;
+			hash_init(t->attribute.scope);
+
+
+			new_parent = t->attribute.scope;
+
+			fprintf(stderr, "Function '%s' of type:\n", CHILD( CHILD(t, 0), 0)->attribute.name);
+			print_tree(t, 0);
+			hash_insert( CHILD( CHILD(t, 0), 0), CHILD( CHILD( CHILD(t, 0), 2), 0), FUNCTION, parent , t);
+
+			break;
 	} 
 
 
